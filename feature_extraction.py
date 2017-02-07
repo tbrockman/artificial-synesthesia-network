@@ -20,7 +20,7 @@ class CnnThread(Thread):
 
     def sendOscMessage(self, message):
         oscmsg = OSC.OSCMessage()
-        oscmsg.setAddress("/")
+        oscmsg.setAddress("/synth")
         oscmsg.append(message)
         self.osc_client.send(oscmsg)
 
@@ -82,7 +82,7 @@ worker_cnn.daemon = True
 worker_cnn.start()
 
 cap = cv2.VideoCapture(0)
-for i in range(1, 2):
+for i in range(1, 20):
     # Capture frame-by-frame
     ret, frame = cap.read()
     image_queue.put(frame)
