@@ -1,4 +1,4 @@
 Python program using Caffe and a pre-trained convolutional neural network (GoogleNet) for image classification,
-which then outputs synth parameters as OSC messages.
+which then outputs synth parameters/midi data through OSC messages.
 
-Includes a SuperCollider server as the OSC receiver.
+Includes SuperCollider script to set up an OSC receiver.
