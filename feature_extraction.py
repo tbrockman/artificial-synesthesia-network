@@ -20,7 +20,7 @@ class CnnThread(Thread):
 
     def sendOscMessage(self, message):
         oscmsg = OSC.OSCMessage()
-        oscmsg.setAddress("/synth")
+        oscmsg.setAddress("/cnn_midi")
         oscmsg.append(message)
         self.osc_client.send(oscmsg)
 
@@ -29,6 +29,8 @@ class CnnThread(Thread):
         net = self.network
 
         while(True):
+            caffe.set_mode_gpu()
+            caffe.set_device(0)
             start = time.time()
             image = image_queue.get()
 
@@ -38,12 +40,12 @@ class CnnThread(Thread):
             net.blobs['data'].data[...] = transformed_image
 
             ### perform classification
-            output = net.forward()
+            output = net.forward(start='data', end='prob')
             # self.sendOscMessage(net.blobs['pool5/7x7_s1'])
 
             # output_prob = output['prob'][0]  # the output probability vector for the first image in the batch
 
-            self.sendOscMessage(str(net.blobs['pool5/7x7_s1'].data.mean()))
+            self.sendOscMessage(np.argmax(output['prob'][0]) % 127);
 
             finish = time.time()
             print 'time spent doing classification: ' + str(finish-start)
@@ -60,9 +62,6 @@ model_weights = model_folder + 'bvlc_googlenet.caffemodel'
 if not os.path.isfile(model_weights):
     print "GoogleNet not found. Exiting."
     sys.exit(0)
-
-caffe.set_device(0)
-caffe.set_mode_gpu()
 
 net = caffe.Net(model_def, model_weights, caffe.TEST)
 
@@ -82,10 +81,11 @@ worker_cnn.daemon = True
 worker_cnn.start()
 
 cap = cv2.VideoCapture(0)
-for i in range(1, 20):
+for i in range(1, 25):
     # Capture frame-by-frame
     ret, frame = cap.read()
     image_queue.put(frame)
+    time.sleep(1)
 
 # When everything done, release the capture
 cap.release()
