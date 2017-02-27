@@ -2,27 +2,22 @@
 # https://github.com/BVLC/caffe/blob/master/examples/00-classification.ipynb
 
 import numpy as np
-import sys, os, caffe, cv2, Queue, time, OSC
+import sys, os, caffe, cv2, Queue, time
 import matplotlib.pyplot as plt
 from threading import Thread
+from osc_handler import OSCHandler
 
 image_queue = Queue.Queue(maxsize=25)
 
 class CnnThread(Thread):
     def __init__(self, transformer, network):
         Thread.__init__(self)
-        c = OSC.OSCClient()
-        c.connect(('127.0.0.1', 57120))   # connect to SuperCollider
-
-        self.osc_client = c
+        self.osc = OSCHandler('127.0.0.1', 57120)
         self.transformer = transformer
         self.network = network
 
     def sendOscMessage(self, message):
-        oscmsg = OSC.OSCMessage()
-        oscmsg.setAddress("/cnn_midi")
-        oscmsg.append(message)
-        self.osc_client.send(oscmsg)
+        self.osc.sendMessage('/cnn_midi', message)
 
     def run(self):
         transformer = self.transformer
@@ -31,8 +26,9 @@ class CnnThread(Thread):
         while(True):
             caffe.set_mode_gpu()
             caffe.set_device(0)
-            start = time.time()
+
             image = image_queue.get()
+            start = time.time()
 
             transformed_image = transformer.preprocess('data', image)
 
@@ -85,7 +81,7 @@ for i in range(1, 25):
     # Capture frame-by-frame
     ret, frame = cap.read()
     image_queue.put(frame)
-    time.sleep(1)
+    time.sleep(0.25)
 
 # When everything done, release the capture
 cap.release()

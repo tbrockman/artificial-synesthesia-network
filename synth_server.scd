@@ -1,23 +1,16 @@
 (
-SynthDef(\sinewave,{|freq = 440|
-var output = SinOsc.ar(freq, 0 ,0.1);
-Out.ar([0,1], output);
-}).send;
-)
-
-(
-
-var note;
-
-x = Synth(\sinewave);
+var notes;
 
 n = NetAddr.new("127.0.0.1", 57120);    // create the NetAddr
 // create the OSCresponderNode
 f = {
 	arg msg, time, addr;
 	if(msg[0] == '/cnn_midi') {
-		note = msg.asInteger;
-		x.set(\freq, note[1].midicps);
+		notes = msg.asInteger;
+		notes[1..5].postln;
+		(midinote: notes[1..5],
+			dur: 0.1,
+		sustain: 0.5).play;
 	}
 };
 thisProcess.addOSCRecvFunc(f);
@@ -41,3 +34,4 @@ MIDIdef.noteOn(\noteOn, {
 )
 
 s.boot;
+
