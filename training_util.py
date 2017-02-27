@@ -1,32 +1,54 @@
-from osc_handler import OSCHandler
 import mingus.core.chords as chords
 import mingus.core.scales as scales
-import curses
+import curses, random
 
-settings = ['Note', 'Chord', 'Key', 'Mood', 'Octave', 'Mode']
+from osc_handler import OSCHandler
+
+def intialize_mood_and_key(scale_list, keys):
+    # Choose a random scale mood
+    scale_index = random.randint(0, len(scale_list)-1)
+    random_scale = scale_list[scale_index]
+
+    # Choose a random tonic
+    key_index = random.randint(0, len(keys)-1)
+    random_key = keys[key_index]
+
+    # Get generator from mingus library
+    scale_generator = getattr(scales, random_scale)
+
+    # Generate random scale from tonic
+    random_scale = scale_generator(random_key).ascending()[0:-1]
+    return (random_scale, scale_index, key_index)
+
+settings = ['Note', 'Chord', 'Key', 'Scale', 'Octave', 'Type']
+scale_list = ['Major', 'HarmonicMajor', 'MelodicMinor', 'HarmonicMinor', 'NaturalMinor', ]
+keys = ['Ab', 'A', 'A#', 'Bb', 'B', 'C', 'C#', 'Db', 'D#', 'D',  \
+'Eb', 'E', 'Gb', 'G', 'F', 'F#', 'G#']
+
 current_setting = 0
 play_notes = 0
+(scale, scale_index, key_index) = intialize_mood_and_key(scale_list, keys)
 
 setting_counter = {
     'Note':0,
     'Chord':0,
-    'Key':0,
-    'Mood':0,
+    'Key':key_index,
+    'Scale':scale_index,
     'Octave':0,
-    'Mode':0,
+    'Type':0,
 }
 
 setting_positions = {
     'Note': (9,10),
     'Chord': (10,10),
     'Key': (11,10),
-    'Mood': (12,10),
+    'Scale': (12,10),
     'Octave': (13,10),
-    'Mode': (14,10),
+    'Type': (14,10),
 }
 
 setting_arrays = {
-    'Note': scales.Major('A').ascending()[0:-1],
+    'Note': scale,
     'Chord': ['minor_triad', 'major_triad', 'diminished_triad', \
     'minor_sixth', 'major_sixth', 'minor_seventh', 'major_seventh', \
     'dominant_seventh', 'minor_major_seventh', 'minor_seventh_flat_five', \
@@ -37,28 +59,50 @@ setting_arrays = {
     'suspended_seventh', 'suspended_fourth_ninth', 'suspended_ninth', \
     'dominant_flat_ninth', 'dominant_sharp_ninth', 'dominant_flat_five', \
     'sixth_ninth', 'hendrix_chord'],
-    'Key': ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#'],
-    'Mood': ['Major', 'Harmonic Major', 'Melodic Minor', 'Harmonic Minor', 'Natural Minor', ],
+    'Key': keys,
+    'Scale': scale_list,
     'Octave': [i for i in range(10)],
-    'Mode': ['Note', 'Chord']
+    'Type': ['Note', 'Chord']
 }
 
 def print_setting(setting):
     setting_position = setting_positions[setting]
     array = setting_arrays[setting]
     index = setting_counter[setting]
-    if isinstance(array[index], unicode):
-        stdscr.addstr(setting_position[0], setting_position[1], \
-        setting + ": " + array[index].encode('utf-8') + '\t\t')
-    else:
-        stdscr.addstr(setting_position[0], setting_position[1], \
-        setting + ": " + str(array[index]) + '\t\t')
-
+    stdscr.addstr(setting_position[0], setting_position[1], \
+    setting + ": " + str(array[index]) + '\t\t')
 
 def add_value_to_setting(value, setting):
     setting_counter[setting] += value
     setting_counter[setting] %= len(setting_arrays[setting])
-    print_setting(setting)
+    try:
+        if(setting == 'Scale') :
+            change_scale_mood(setting_arrays[setting][setting_counter[setting]])
+        elif(setting == 'Key'):
+            change_scale_key(setting_arrays[setting][setting_counter[setting]])
+        print_setting(setting)
+
+    except:
+        add_value_to_setting(value, setting)
+
+
+
+def change_scale_mood(mood):
+    # Get generator from mingus library
+    scale_generator = getattr(scales, mood)
+    current_key = setting_arrays['Key'][setting_counter['Key']]
+    new_scale = scale_generator(current_key).ascending()[0:-1]
+    setting_arrays['Note'] = new_scale
+    setting_counter['Note'] = 0
+    print_setting('Note')
+
+def change_scale_key(key):
+    current_mood = setting_arrays['Scale'][setting_counter['Scale']]
+    scale_generator = getattr(scales, current_mood)
+    new_scale = scale_generator(key).ascending()[0:-1]
+    setting_arrays['Note'] = new_scale
+    setting_counter['Note'] = 0
+    print_setting('Note')
 
 def indicate_setting(setting):
     for k,v in setting_positions.items():
@@ -116,11 +160,12 @@ while key != ord('q'):
 
     # enter, send sound to SC through osc
     elif key == 10:
+        # TODO: convert notes to midi
         # if in chord mode
-        if (setting_counter['Mode']):
-            stdscr.addstr(20,10, setting_arrays['Chord'][setting_counter['Chord']])
+        if (setting_counter['Type']):
             continue
         # else in note mode
+
         else:
             note = setting_arrays['Note'][setting_counter['Note']]
             index = setting_arrays['Key'].index(note)
@@ -130,7 +175,7 @@ while key != ord('q'):
 
     # tab
     elif key == 9:
-        add_value_to_setting(1, 'Mode')
+        add_value_to_setting(1, 'Type')
 
 
     stdscr.move(17,10)
