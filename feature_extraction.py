@@ -24,21 +24,14 @@ class CnnThread(Thread):
         net = self.network
 
         while(True):
-            caffe.set_mode_gpu()
-            caffe.set_device(0)
 
             image = image_queue.get()
             start = time.time()
 
-            transformed_image = transformer.preprocess('data', image)
-
-            # copy the image data into the memory allocated for the net
-            net.blobs['data'].data[...] = transformed_image
-
-            ### perform classification
-            output = net.forward(start='data', end='prob')
+            output = classify_image(net, image, transformer)
+            
             # self.sendOscMessage(net.blobs['pool5/7x7_s1'])
-
+            print len(output['prob'][0]), output['prob']
             # output_prob = output['prob'][0]  # the output probability vector for the first image in the batch
 
             self.sendOscMessage(np.argmax(output['prob'][0]) % 127);
@@ -48,6 +41,17 @@ class CnnThread(Thread):
 
             image_queue.task_done()
 
+
+def classify_image(net, image, transformer):
+    caffe.set_mode_gpu()
+    caffe.set_device(0)
+
+    transformed_image = transformer.preprocess('data', image)
+    # copy the image data into the memory allocated for the net
+    net.blobs['data'].data[...] = transformed_image
+    ### perform classification
+    output = net.forward(start='data', end='prob')
+    return output
 
 caffe_root = '/home/theodore/Documents/caffe/'
 model_folder = caffe_root + 'models/bvlc_googlenet/'
