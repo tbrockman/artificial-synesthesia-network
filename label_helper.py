@@ -1,20 +1,17 @@
 import sys, os, json, random
 
-labeled = "labels.json"
-unlabeled = "unlabeled.json"
+labeled = "./data/"
+unlabeled = "unlabeled.txt"
 
 def initialize_labels():
 
     file_array = []
 
-    for root, dirs, files in os.walk('raw images'):
+    for root, dirs, files in os.walk('data'):
         for filename in files:
             if (filename.split('.')[-1] == 'jpg'):
-                file_object = {
-                    'path': os.path.join(root, filename),
-                    'label': []
-                }
-                file_array.append(file_object)
+                file_string = os.path.join(root, filename) + ' ' + str([])
+                file_array.append(file_string)
 
     try:
         with open(unlabeled, 'w') as out:
@@ -26,32 +23,33 @@ def initialize_labels():
         exit(0)
 
 def label_unlabeled():
-    with open(unlabeled) as json_data:
-        unlabeled_files = json.load(json_data)
-        json_data.close()
+    with open(unlabeled) as f:
+        unlabeled_files = json.load(f)
+        f.close()
 
     midi = ""
     while midi != "q":
         # open a random unlabled image
         index = random.randint(0, len(unlabeled_files))
         to_be_labeled = unlabeled_files[index]
+        [path, label] = to_be_labeled.split(' ', 1)
 
         # open with outside program to avoid blocking using matplotlib/cv2
-        os.system('eog "' + to_be_labeled['path'] + '" &')
+        os.system('eog "' + path + '" &')
 
-        midi = str(raw_input("Midi notes (space separated integers [1, 127]): "))
+        midi = str(raw_input("Midi notes (space separated integers [0, 127]): "))
 
         if midi == "q":
             break
 
         midi_notes = midi.split(' ')
         # convert midi notes to binary array
-        zeros = [0] * 127
+        zeros = [0] * 128
         for note in midi_notes:
-            zeros[int(note)-1] = 1
+            zeros[int(note)] = 1
 
         # add resulting binary array to labeled files
-        label_file(to_be_labeled['path'], zeros)
+        label_file(path, zeros)
 
         # remove from unlabeled list and unlabeled json file
         unlabeled_files.pop(index)
@@ -78,28 +76,34 @@ def remove_from_unlabeled_file(index):
 
 def label_file(path, label):
 
-    new_label = {
-        'path': path,
-        'label': label
-    }
+    new_label = path + ' ' + str(label)
 
     try:
-        with open(labeled, 'r+') as json_data:
-            labeled_files = json.load(json_data)
-
+        with open(labeled, 'r+') as f:
+            labeled_files = json.load(f)
             labeled_files.append(new_label)
 
-            json_data.seek(0)
-            json.dump(labeled_files, json_data)
-            json_data.truncate()
+            f.seek(0)
+            json.dump(labeled_files, f)
+            f.truncate()
+            f.close()
 
     except:
 
-        with open(labeled, "w") as json_data:
+        with open(labeled, "w") as f:
 
             labeled_files = [new_label]
-            json.dump(labeled_files, json_data)
+            json.dump(labeled_files, f)
 
 
 if __name__ == "__main__":
+    # if program started with optional argument of filename for
+    # label output, output to that file
+    # otherwise assum we want to add to training
+    if (len(sys.argv) > 1):
+        labeled += sys.argv[1] + '.txt'
+    else:
+        labeled += 'train.txt'
+
     label_unlabeled()
+    #initialize_labels()

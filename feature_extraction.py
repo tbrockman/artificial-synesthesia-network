@@ -1,6 +1,7 @@
 # Credit due to
 # https://github.com/BVLC/caffe/blob/master/examples/00-classification.ipynb
 
+import lmdb
 import numpy as np
 import sys, os, caffe, cv2, Queue, time
 import matplotlib.pyplot as plt
@@ -28,10 +29,9 @@ class CnnThread(Thread):
             image = image_queue.get()
             start = time.time()
 
-            output = classify_image(net, image, transformer)
-            
+            output = extract_image_features(net, image, transformer)
+            print output['prob'].shape
             # self.sendOscMessage(net.blobs['pool5/7x7_s1'])
-            print len(output['prob'][0]), output['prob']
             # output_prob = output['prob'][0]  # the output probability vector for the first image in the batch
 
             self.sendOscMessage(np.argmax(output['prob'][0]) % 127);
@@ -42,16 +42,27 @@ class CnnThread(Thread):
             image_queue.task_done()
 
 
-def classify_image(net, image, transformer):
+def extract_image_features(net, image, transformer):
     caffe.set_mode_gpu()
     caffe.set_device(0)
 
     transformed_image = transformer.preprocess('data', image)
     # copy the image data into the memory allocated for the net
     net.blobs['data'].data[...] = transformed_image
-    ### perform classification
+    # perform classification
     output = net.forward(start='data', end='prob')
     return output
+
+def add_features_to_lmdb(features):
+    map_size = features.nbytes * 10
+    env = lmdb.open('testlmdb', map_size)
+    with env.begin(write=True) as txn:
+        datum = caffe.proto.caffe_pb2.Datum()
+        datum.channels = 1
+        datum.height = 1
+        datum.width = features.shape[0]
+
+    return
 
 caffe_root = '/home/theodore/Documents/caffe/'
 model_folder = caffe_root + 'models/bvlc_googlenet/'
@@ -75,6 +86,10 @@ transformer.set_transpose('data', (2,0,1))  # move image channels to outermost d
 transformer.set_mean('data', mu)            # subtract the dataset-mean value in each channel
 transformer.set_raw_scale('data', 255)      # rescale from [0, 1] to [0, 255]
 transformer.set_channel_swap('data', (2,1,0))  # swap channels from RGB to BGR
+
+net.blobs['data'].reshape(1,        # batch size
+                          3,         # 3-channel (BGR) images
+                          224, 224)  # image size is 227x227
 
 worker_cnn = CnnThread(transformer, net)
 worker_cnn.daemon = True
