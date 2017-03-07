@@ -1,21 +1,18 @@
-import caffe
-import os
-import sys
+from keras.applications.inception_v3 import InceptionV3
+from keras.preprocessing import image
+from keras.models import Model
+from keras.layers import Dense, GlobalAveragePooling2D
+from keras import backend as K
 
-sys.path.append("pycaffe/layers") # the datalayers we will use are in this directory.
-sys.path.append("pycaffe") # the tools file is in this folder
+# create the base pre-trained model
+base_model = InceptionV3(weights='imagenet', include_top=False)
 
-workdir = './pascal_multilabel_with_datalayer'
-if not os.path.isdir(workdir):
-    os.makedirs(workdir)
+x = base_model.output
+predictions = Dense(128, activation='sigmoid')(x)
 
-caffe_root = '/home/theodore/Documents/caffe/'
-sys.path.insert(1, caffe_root + 'python')
+model = Model(input=base_model.input, output=predictions)
 
-caffe.set_mode_gpu()
-caffe.set_device(0)
+for layer in base_model.layers:
+    layer.trainable = false
 
-solver = caffe.SGDSolver(os.path.join(workdir, 'solver.prototxt'))
-solver.net.copy_from(caffe_root + 'models/bvlc_reference_caffenet/bvlc_reference_caffenet.caffemodel')
-solver.test_nets[0].share_with(solver.net)
-solver.solve()
+model.compile(optimizer='sgd', loss='binary_crossentropy', metrics=['accuracy'])

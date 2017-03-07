@@ -1,7 +1,10 @@
 import sys, os, json, random
+from scipy import misc
+import image_augmentation
 
-labeled = "./data/"
+labeled = ""
 unlabeled = "unlabeled.txt"
+labeled_folder = "labeled"
 
 def initialize_labels():
 
@@ -73,15 +76,39 @@ def remove_from_unlabeled_file(index):
         json.dump(unlabeled_files, write_json)
         write_json.close()
 
+def create_augmented_images_in_folder(original_name, images, folder):
+    paths = []
+    for i in range(len(images)):
+        path = os.path.join(folder, original_name + '_' + str(i) + '.jpg')
+        misc.imsave(path, images[i])
+        paths.append(path)
+    return paths
+
+def move_original_file_to_folder(original_path, filename, folder):
+    new_path = os.path.join(folder, filename + '.jpg')
+    os.rename(original_path, new_path)
+    return new_path
 
 def label_file(path, label):
 
+    # change this
     new_label = path + ' ' + str(label)
+
+    # read image
+    image = misc.imread(path)
+
+    # apply image augmentation
+    augmented_images = image_augmentation.augment_image(image)
+    filename = path.split('/')[-1].strip('.jpg')
+    paths = create_augmented_images_in_folder(filename, augmented_images, labeled_folder)
+    new_path = move_original_file_to_folder(path, filename, labeled_folder)
+    paths.append(new_path)
 
     try:
         with open(labeled, 'r+') as f:
             labeled_files = json.load(f)
-            labeled_files.append(new_label)
+            for path in paths:
+                labeled_files.append(path + ' ' + str(label))
 
             f.seek(0)
             json.dump(labeled_files, f)
@@ -91,8 +118,9 @@ def label_file(path, label):
     except:
 
         with open(labeled, "w") as f:
-
-            labeled_files = [new_label]
+            labeled_files = []
+            for path in paths:
+                labeled_files.append(path + ' ' + str(label))
             json.dump(labeled_files, f)
 
 
