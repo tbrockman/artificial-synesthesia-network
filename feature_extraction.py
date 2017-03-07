@@ -1,7 +1,6 @@
 # Credit due to
 # https://github.com/BVLC/caffe/blob/master/examples/00-classification.ipynb
 
-import lmdb
 import numpy as np
 import sys, os, caffe, cv2, Queue, time
 import matplotlib.pyplot as plt
