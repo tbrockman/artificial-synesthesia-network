@@ -9,6 +9,9 @@ import numpy as np
 import sys, os, json, ast
 import scipy.misc
 
+num_epochs = 50
+batch_size = 32
+
 def initialize_model(model_path):
 
     # create the base pre-trained model
@@ -29,7 +32,7 @@ def initialize_model(model_path):
 def train(model_path, batch_path):
     model = load_model(model_path)
     train_x, train_y = load_training_set(batch_path)
-    model.fit(train_x, train_y, nb_epoch=10, batch_size=32)
+    model.fit(train_x, train_y, nb_epoch=num_epochs, batch_size=batch_size)
     model.save(model_path)
 
 def load_training_set(batch_path):

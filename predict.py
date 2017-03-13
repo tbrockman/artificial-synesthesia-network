@@ -28,4 +28,4 @@ if __name__ == '__main__':
             close_midi = np.where(predictions > value - 0.01)
             osc.sendMessage('/cnn_midi', close_midi[1].tolist())
             print close_midi[1].tolist(), highest_midi
-            time.sleep(0.25)
+            time.sleep(0.5)

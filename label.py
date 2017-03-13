@@ -129,7 +129,7 @@ if __name__ == "__main__":
     # label output, output to that file
     # otherwise assum we want to add to training
     if (len(sys.argv) > 1):
-        labeled += sys.argv[1] + '.txt'
+        labeled += sys.argv[1]
     else:
         labeled += 'train.txt'
 
