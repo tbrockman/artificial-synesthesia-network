@@ -3,6 +3,7 @@ from keras.preprocessing import image
 from keras.models import Model, load_model
 from keras.layers import Dense, GlobalAveragePooling2D
 from keras.utils import np_utils
+from keras.optimizers import SGD
 from keras import backend as K
 from PIL import Image
 import numpy as np
@@ -11,6 +12,7 @@ import scipy.misc
 
 num_epochs = 50
 batch_size = 32
+val_split = 0.2
 
 def initialize_model(model_path):
 
@@ -29,10 +31,18 @@ def initialize_model(model_path):
     model.compile(optimizer='sgd', loss='binary_crossentropy', metrics=['accuracy'])
     model.save(model_path)
 
+def unfreeze_all_model_layers(model_path):
+    model = load_model(model_path)
+    for layer in model.layers:
+        layer.trainable = True
+    sgd = SGD(lr=0.01, momentum=0.9)
+    model.compile(optimizer=sgd, loss='binary_crossentropy', metrics=['accuracy'])
+    model.save(model_path)
+
 def train(model_path, batch_path):
     model = load_model(model_path)
     train_x, train_y = load_training_set(batch_path)
-    model.fit(train_x, train_y, nb_epoch=num_epochs, batch_size=batch_size)
+    model.fit(train_x, train_y, nb_epoch=num_epochs, batch_size=batch_size, validation_split=val_split)
     model.save(model_path)
 
 def load_training_set(batch_path):
@@ -78,6 +88,7 @@ if (__name__ == "__main__"):
 
     if (os.path.isfile(model_path)):
         train(model_path, batch_path)
+        # unfreeze_all_model_layers(model_path)
 
     else:
         initialize_model(model_path)

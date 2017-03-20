@@ -3,6 +3,8 @@ from osc_handler import OSCHandler
 import numpy as np
 import sys, cv2, scipy.misc, time
 
+tempo = 120
+
 def capture_and_preprocess_webcam_image():
     cap = cv2.VideoCapture(0)
     ret, frame = cap.read()
@@ -25,7 +27,7 @@ if __name__ == '__main__':
             predictions = model.predict(img, batch_size=1)
             highest_midi = np.argmax(predictions[0])
             value = predictions[0][highest_midi]
-            close_midi = np.where(predictions > value - 0.01)
+            close_midi = np.where(predictions > value - 0.05)
             osc.sendMessage('/cnn_midi', close_midi[1].tolist())
-            print close_midi[1].tolist(), highest_midi
-            time.sleep(0.5)
+            print close_midi[1].tolist()
+            time.sleep(1.0 / (tempo / 60))
