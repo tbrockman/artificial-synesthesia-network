@@ -40,6 +40,16 @@ def unfreeze_all_model_layers(model_path):
     model.compile(optimizer=sgd, loss='binary_crossentropy', metrics=['accuracy'])
     model.save(model_path)
 
+def unfreeze_n_model_layers(model_path, n):
+    model = load_model(model_path)
+    for layer in model.layers[:n]:
+        layer.trainable = False
+    for layer in model.layers[n:]:
+        layer.trainable = True
+    sgd = SGD(lr=0.01, momentum=0.9, nesterov=True)
+    model.compile(optimizer=sgd, loss='binary_crossentropy', metrics=['accuracy'])
+    model.save(model_path)
+
 def train(model_path, batch_path):
     model = load_model(model_path)
     train_x, train_y = load_training_set(batch_path)
@@ -89,8 +99,9 @@ if (__name__ == "__main__"):
         batch_path = sys.argv[2]
 
     if (os.path.isfile(model_path)):
-        train(model_path, batch_path)
+        unfreeze_n_model_layers(model_path, 127)
         # unfreeze_all_model_layers(model_path)
+        train(model_path, batch_path)
 
     else:
         initialize_model(model_path)
