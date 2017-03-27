@@ -6,7 +6,7 @@ import mingus.core.scales as scales
 import matplotlib.pyplot as plt
 
 tempo = 120
-threshold = 0.1
+threshold = 0.05
 last_prediction = np.array([])
 saved_predictions = []
 notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
@@ -29,7 +29,7 @@ def predict_image_and_send_osc(model, image, osc):
     #saved_predictions.append(convert_midi_values_to_notes(close_midi))
     #saved_predictions.append(close_midi)
     send_midi_on_osc(osc, close_midi)
-    # print close_midi.tolist()
+    print close_midi.tolist()
 
 def threshold_predictions(predictions, highest):
     value = predictions[0][highest]
@@ -39,9 +39,9 @@ def threshold_predictions(predictions, highest):
     return close_midi[1]
 
 def send_midi_on_osc(osc, midi):
-    global last_prediction
-    if not np.array_equal(last_prediction, midi):
-        last_prediction = midi
+    #global last_prediction
+    #if not np.array_equal(last_prediction, midi):
+    #    last_prediction = midi
         osc.sendMessage('/cnn_midi', midi.tolist())
 
 def predict_image(model, img):
@@ -87,10 +87,10 @@ def batch_predict_folder(model, osc, folder_path):
             raw = np.asarray(PIL.Image.open(image_path))
             img = preprocess_frame_for_prediction(raw)
             predict_image_and_send_osc(model, img, osc)
-            # imgplot = plt.imshow(raw)
-            # plt.show(block=False)
-            # time.sleep(1.0 / (2 * tempo / 60))
-            # plt.close()
+            imgplot = plt.imshow(raw)
+            plt.show(block=False)
+            time.sleep(1.0 / (2 * tempo / 60))
+            plt.close()
 
 
 if __name__ == '__main__':
