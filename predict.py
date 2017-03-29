@@ -5,8 +5,11 @@ import sys, cv2, scipy.misc, time, os, PIL
 import mingus.core.scales as scales
 import matplotlib.pyplot as plt
 
+sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../WarpPerspective")
+import warpperspective
+
 tempo = 120
-threshold = 0.05
+threshold = 0.1
 last_prediction = np.array([])
 saved_predictions = []
 notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
@@ -29,7 +32,7 @@ def predict_image_and_send_osc(model, image, osc):
     #saved_predictions.append(convert_midi_values_to_notes(close_midi))
     #saved_predictions.append(close_midi)
     send_midi_on_osc(osc, close_midi)
-    print close_midi.tolist()
+    return close_midi.tolist()
 
 def threshold_predictions(predictions, highest):
     value = predictions[0][highest]
@@ -54,11 +57,23 @@ def preprocess_frame_for_prediction(frame):
     img = img[np.newaxis, ...] # turn into batch of size 1
     return img
 
-def capture_and_preprocess_webcam_image():
+def capture_and_preprocess_webcam_image(warper=None):
     cap = cv2.VideoCapture(0)
     ret, frame = cap.read()
+    if (warper):
+        frame = warper.warp(frame)
+
     img = preprocess_frame_for_prediction(frame)
     return img, frame
+
+def show_image_with_overlayed_midi(img, midi):
+    notes = convert_midi_values_to_notes(midi)
+    cv2.putText(img,str(notes),(10,50), cv2.FONT_HERSHEY_SIMPLEX, 1,(255,255,255),2)
+    cv2.imshow('frame',img)
+    if cv2.waitKey(100) & 0xFF == ord('q'):
+        return 1
+    else:
+        return 0
 
 def start_video_capture(model, osc, video_path):
     vidcap = cv2.VideoCapture(video_path)
@@ -67,9 +82,9 @@ def start_video_capture(model, osc, video_path):
         success, frame = vidcap.read()
         if success:
             img = preprocess_frame_for_prediction(frame)
-            predict_image_and_send_osc(model, img, osc)
-            cv2.imshow('frame',frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
+            midi = predict_image_and_send_osc(model, img, osc)
+            exit = show_image_with_overlayed_midi(frame, midi)
+            if (exit):
                 break
         else:
             break
@@ -86,12 +101,11 @@ def batch_predict_folder(model, osc, folder_path):
             image_path = os.path.join(folder_path, filenames[i])
             raw = np.asarray(PIL.Image.open(image_path))
             img = preprocess_frame_for_prediction(raw)
-            predict_image_and_send_osc(model, img, osc)
-            imgplot = plt.imshow(raw)
-            plt.show(block=False)
-            time.sleep(1.0 / (2 * tempo / 60))
-            plt.close()
-
+            midi = predict_image_and_send_osc(model, img, osc)
+            exit = show_image_with_overlayed_midi(raw, midi)
+            if (exit):
+                cv2.destroyAllWindows()
+                break
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
@@ -113,11 +127,15 @@ if __name__ == '__main__':
             sys.exit(0)
 
     else:
+        img, frame = capture_and_preprocess_webcam_image()
+        warped = None
+        wc = warpperspective.WarpCalibrator()
+        warper = wc.calibrate(frame)
 
         while(1):
-            img, frame = capture_and_preprocess_webcam_image()
-            predict_image_and_send_osc(model, img, osc)
-            imgplot = plt.imshow(frame)
-            plt.show(block=False)
-            time.sleep(1.0 / (tempo / 60))
-            plt.close()
+            img, frame = capture_and_preprocess_webcam_image(warper)
+            midi = predict_image_and_send_osc(model, img, osc)
+            exit = show_image_with_overlayed_midi(frame, midi)
+            if (exit):
+                cv2.destroyAllWindows()
+                break
