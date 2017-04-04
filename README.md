@@ -1,4 +1,4 @@
-Copyright [2017] [Theodore Brockman]
+Copyright 2017 Theodore Brockman
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 
-Python program using Keras and a pre-trained convolutional neural network (InceptionV3) for image classification,
+Python program using Keras and a convolutional neural network (InceptionV3) with weights pretrained on ImageNet for image classification,
 which then outputs synth parameters/midi data through OSC messages.
 
 Includes SuperCollider script to set up an OSC receiver.
