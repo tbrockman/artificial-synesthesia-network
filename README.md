@@ -17,6 +17,6 @@ limitations under the License.
 # About
 
 Python program using Keras and a convolutional neural network (InceptionV3) with weights pretrained on ImageNet for image classification,
-which then outputs synth parameters/midi data through OSC messages.
+which then outputs MIDI data through OSC messages.
 
 Includes SuperCollider script to set up an OSC receiver.
