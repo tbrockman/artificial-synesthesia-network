@@ -3,14 +3,15 @@ from scipy import misc
 import image_augmentation
 
 labeled = ""
-unlabeled = "unlabeled.txt"
-labeled_folder = "labeled"
+unlabeled = "performance_unlabeled.txt"
+unlabeled_folder = "wikicommon_images"
+labeled_folder = "performance_training_set"
 
 def initialize_labels():
 
     file_array = []
 
-    for root, dirs, files in os.walk('data'):
+    for root, dirs, files in os.walk(unlabled_folder):
         for filename in files:
             if (filename.split('.')[-1] == 'jpg'):
                 file_string = os.path.join(root, filename) + ' ' + str([])
@@ -125,13 +126,8 @@ def label_file(path, label):
 
 
 if __name__ == "__main__":
-    # if program started with optional argument of filename for
-    # label output, output to that file
-    # otherwise assum we want to add to training
     if (len(sys.argv) > 1):
         labeled += sys.argv[1]
+        label_unlabeled()
     else:
-        labeled += 'train.txt'
-
-    label_unlabeled()
-    #initialize_labels()
+        initialize_labels()

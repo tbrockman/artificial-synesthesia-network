@@ -6,8 +6,7 @@ SynthDef.new(\sineSynth, {|freq=#[1,2,3,4,5]|
 	var sig, env;
 	sig = SinOsc.ar(freq, 5, 0.2)!2;
 	env = EnvGen.kr(Env.perc(0.1, 1, 1, -8), doneAction:2);
-	Out.ar(0, sig * env * 0.4);
-	Out.ar(1, sig * env * 0.4);
+	Out.ar([0,1], sig * env * 0.4);
 }).add;
 
 
