@@ -1,17 +1,31 @@
-import sys, os, json, random
+import sys, os, json, random, cv2, rtmidi
 from scipy import misc
+from osc_handler import OSCHandler
 import image_augmentation
+
+sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../WarpPerspective")
+import warpperspective
 
 labeled = ""
 unlabeled = "performance_unlabeled.txt"
 unlabeled_folder = "wikicommon_images"
 labeled_folder = "performance_training_set"
+osc_handler = None
+
+class MidiConnection:
+
+    def __init__(self, port, callback):
+        self.midi = rtmidi.MidiIn()
+        available_ports = self.midi.get_ports()
+        if len(available_ports) > port:
+            self.midi.set_callback(callback)
+            self.midi.open_port(port)
 
 def initialize_labels():
 
     file_array = []
 
-    for root, dirs, files in os.walk(unlabled_folder):
+    for root, dirs, files in os.walk(unlabeled_folder):
         for filename in files:
             if (filename.split('.')[-1] == 'jpg'):
                 file_string = os.path.join(root, filename) + ' ' + str([])
@@ -26,29 +40,42 @@ def initialize_labels():
         print "Error opening file for intializing labels."
         exit(0)
 
-def label_unlabeled():
-    with open(unlabeled) as f:
-        unlabeled_files = json.load(f)
-        f.close()
+def label_unlabeled(folder, performance=True):
+
+    file_array = []
+
+    if folder:
+        for root, dirs, files in os.walk(folder):
+            for filename in files:
+                print
+                if (filename.split('.')[-1] == 'jpg'):
+                    file_string = os.path.join(root, filename) + ',' + str([])
+                    file_array.append(file_string)
 
     midi = ""
-    while midi != "q":
+    while midi != "q" and len(file_array[:]) > 0:
         # open a random unlabled image
-        index = random.randint(0, len(unlabeled_files))
-        to_be_labeled = unlabeled_files[index]
-        [path, label] = to_be_labeled.split(' ', 1)
+        index = random.randint(0, len(file_array))
+        to_be_labeled = file_array[index]
+        [path, label] = to_be_labeled.split(',', 1)
 
         # open with outside program to avoid blocking using matplotlib/cv2
         os.system('eog "' + path + '" &')
 
-        midi = str(raw_input("Midi notes (space separated integers [0, 127]): "))
+        if (performance):
+            midi = str(raw_input("Tracks to play for image [0, 7]"))
+            zeros = [0] * 8
+
+        else:
+            midi = str(raw_input("Midi notes (space separated integers [0, 127]): "))
+            zeros = [0] * 128
 
         if midi == "q":
             break
 
         midi_notes = midi.split(' ')
         # convert midi notes to binary array
-        zeros = [0] * 128
+
         for note in midi_notes:
             zeros[int(note)] = 1
 
@@ -56,8 +83,7 @@ def label_unlabeled():
         label_file(path, zeros)
 
         # remove from unlabeled list and unlabeled json file
-        unlabeled_files.pop(index)
-        remove_from_unlabeled_file(index)
+        file_array.pop(index)
 
         # kill image window
         os.system("killall -9 eog")
@@ -89,6 +115,36 @@ def move_original_file_to_folder(original_path, filename, folder):
     new_path = os.path.join(folder, filename + '.jpg')
     os.rename(original_path, new_path)
     return new_path
+
+def midi_callback(midi_tuple, data):
+    osc_handler.sendMessage('/noteon', midi_tuple(1))
+    print midi_tuple, data
+
+def label_video(video_path):
+    vidcap = cv2.VideoCapture(video_path)
+    count = 0
+    warped = None
+    success, frame = vidcap.read()
+    wc = warpperspective.WarpCalibrator()
+    warper = wc.calibrate(frame)
+    osc_handler = OSCHandler('127.0.0.1', 57120)
+    midi_connection = MidiConnection(1, midi_callback)
+
+    while(vidcap.isOpened()):
+
+        success, frame = vidcap.read()
+        count += 1
+        if success and count % 10 == 0:
+
+            frame = warper.warp(frame)
+            cv2.imshow('frame', frame)
+            key = cv2.waitKey()
+            if  key & 0xFF == ord('q'):
+                break
+            else:
+                continue
+
+            key_array = raw_input("Keys pressed: ")
 
 def label_file(path, label):
 
@@ -128,6 +184,8 @@ def label_file(path, label):
 if __name__ == "__main__":
     if (len(sys.argv) > 1):
         labeled += sys.argv[1]
-        label_unlabeled()
+        #label_unlabeled(sys.argv[2])
+        label_video(sys.argv[2])
+
     else:
         initialize_labels()

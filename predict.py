@@ -44,10 +44,16 @@ def threshold_predictions(predictions, highest, threshold):
     close_midi = np.where(predictions > (value - threshold))
     return close_midi[1]
 
-def send_midi_on_osc(osc, midi):
+def send_midi_on_osc(osc, midi, performance=True):
     #global last_prediction
     #if not np.array_equal(last_prediction, midi):
     #    last_prediction = midi
+    if performance:
+        for track in midi:
+            # TODO: send osc on for present tracks
+            # send osc off for not present tracks
+            print track
+    else:
         osc.sendMessage('/cnn_midi', midi.tolist())
 
 def predict_image(model, img):
