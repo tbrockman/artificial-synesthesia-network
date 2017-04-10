@@ -14,6 +14,7 @@ import scipy.misc
 num_epochs = 20
 batch_size = 32
 val_split = 0.2
+net_output_size = 8
 
 def initialize_model(model_path):
 
@@ -23,7 +24,7 @@ def initialize_model(model_path):
     x = base_model.output
     x = GlobalAveragePooling2D()(x)
     x = Dense(1024, activation='relu')(x)
-    prediction_layer = Dense(128, activation='sigmoid')(x)
+    prediction_layer = Dense(net_output_size, activation='sigmoid')(x)
     model = Model(input=base_model.input, output=prediction_layer)
 
     for layer in base_model.layers:
@@ -63,7 +64,7 @@ def load_training_set(batch_path):
         num_samples = len(labeled_files)
 
         train_x = np.ndarray(shape=(num_samples, 299, 299, 3), dtype='float')
-        train_y = np.ndarray(shape=(num_samples, 128), dtype='uint8')
+        train_y = np.ndarray(shape=(num_samples, net_output_size), dtype='uint8')
 
         for i in range(num_samples):
             [image, label] = extract_image_data(labeled_files[i])
@@ -99,8 +100,8 @@ if (__name__ == "__main__"):
         batch_path = sys.argv[2]
 
     if (os.path.isfile(model_path)):
-        unfreeze_n_model_layers(model_path, 127)
-        # unfreeze_all_model_layers(model_path)
+        # unfreeze_n_model_layers(model_path, 127)
+        unfreeze_all_model_layers(model_path)
         train(model_path, batch_path)
 
     else:

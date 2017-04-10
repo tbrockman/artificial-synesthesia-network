@@ -10,6 +10,7 @@ labeled = ""
 unlabeled = "performance_unlabeled.txt"
 unlabeled_folder = "wikicommon_images"
 labeled_folder = "performance_training_set"
+held_notes = []
 osc_handler = None
 
 class MidiConnection:
@@ -40,7 +41,13 @@ def initialize_labels():
         print "Error opening file for intializing labels."
         exit(0)
 
-def label_unlabeled(folder, performance=True):
+def to_binary_array_label(label, length):
+    binary_array = [0] * length
+    for note in label:
+        binary_array[note] = 1
+    return binary_array
+
+def label_unlabeled(folder):
 
     file_array = []
 
@@ -62,13 +69,8 @@ def label_unlabeled(folder, performance=True):
         # open with outside program to avoid blocking using matplotlib/cv2
         os.system('eog "' + path + '" &')
 
-        if (performance):
-            midi = str(raw_input("Tracks to play for image [0, 7]"))
-            zeros = [0] * 8
-
-        else:
-            midi = str(raw_input("Midi notes (space separated integers [0, 127]): "))
-            zeros = [0] * 128
+        midi = str(raw_input("Midi notes (space separated integers [0, 127]): "))
+        zeros = [0] * 128
 
         if midi == "q":
             break
@@ -117,10 +119,25 @@ def move_original_file_to_folder(original_path, filename, folder):
     return new_path
 
 def midi_callback(midi_tuple, data):
-    osc_handler.sendMessage('/noteon', midi_tuple(1))
-    print midi_tuple, data
+    global held_notes
+
+    midi_data = midi_tuple[0]
+    velocity = midi_data[2]
+    note = midi_data[1] - 65 # because we dont have a midi keyboard that goes to 0
+
+    if (note >= 0 and note < 8 ): # only accept notes [0, 8)
+        if (velocity == 0):
+            held_notes.remove(note)
+            osc_handler.sendMessage('/noteoff', note)
+        else:
+            held_notes.append(note)
+            osc_handler.sendMessage('/noteon', note)
+    print midi_data
 
 def label_video(video_path):
+    global osc_handler
+    global held_notes
+
     vidcap = cv2.VideoCapture(video_path)
     count = 0
     warped = None
@@ -138,13 +155,46 @@ def label_video(video_path):
 
             frame = warper.warp(frame)
             cv2.imshow('frame', frame)
-            key = cv2.waitKey()
-            if  key & 0xFF == ord('q'):
+            key = cv2.waitKey(100)
+
+            if key & 0xFF == ord('q'):
                 break
             else:
-                continue
+                print held_notes
 
-            key_array = raw_input("Keys pressed: ")
+                augmented_images = image_augmentation.augment_image(frame)
+                videoname = video_path.split("/")[-1].split(".")[0]
+                filename = videoname + "_" + str(count) + ".jpg"
+                paths = create_augmented_images_in_folder(videoname, augmented_images, labeled_folder)
+                # save original image as well
+                cv2.imwrite(os.path.join(labeled_folder, filename), frame)
+                paths.append(os.path.join(labeled_folder, filename))
+
+                label = to_binary_array_label(held_notes, 8)
+
+                try:
+                    with open(labeled, 'r+') as f:
+                        labeled_files = json.load(f)
+                        for path in paths:
+                            labeled_files.append(path + ' ' + str(label))
+
+                        f.seek(0)
+                        json.dump(labeled_files, f)
+                        f.truncate()
+                        f.close()
+
+                except:
+
+                    with open(labeled, "w") as f:
+                        labeled_files = []
+                        for path in paths:
+                            labeled_files.append(path + ' ' + str(label))
+                        json.dump(labeled_files, f)
+
+                continue
+        elif not success:
+            break
+
 
 def label_file(path, label):
 
