@@ -151,7 +151,7 @@ def label_video(video_path):
 
         success, frame = vidcap.read()
         count += 1
-        if success and count % 10 == 0:
+        if success and count % 100 == 0:
 
             frame = warper.warp(frame)
             cv2.imshow('frame', frame)
