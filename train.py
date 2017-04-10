@@ -101,7 +101,7 @@ if (__name__ == "__main__"):
 
     if (os.path.isfile(model_path)):
         # unfreeze_n_model_layers(model_path, 127)
-        unfreeze_all_model_layers(model_path)
+        # unfreeze_all_model_layers(model_path)
         train(model_path, batch_path)
 
     else:

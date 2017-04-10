@@ -48,50 +48,50 @@ def to_binary_array_label(label, length):
     return binary_array
 
 def label_unlabeled(folder):
+    global osc_handler
+    global held_notes
 
+    osc_handler = OSCHandler('127.0.0.1', 57120)
+    midi_connection = MidiConnection(1, midi_callback)
     file_array = []
 
     if folder:
         for root, dirs, files in os.walk(folder):
             for filename in files:
-                print
                 if (filename.split('.')[-1] == 'jpg'):
-                    file_string = os.path.join(root, filename) + ',' + str([])
+                    file_string = os.path.join(root, filename) + ' ' + str([])
                     file_array.append(file_string)
 
-    midi = ""
-    while midi != "q" and len(file_array[:]) > 0:
+    while len(file_array[:]) > 0:
         # open a random unlabled image
         index = random.randint(0, len(file_array))
         to_be_labeled = file_array[index]
-        [path, label] = to_be_labeled.split(',', 1)
+        [path, label] = to_be_labeled.split(' ', 1)
 
-        # open with outside program to avoid blocking using matplotlib/cv2
-        os.system('eog "' + path + '" &')
+        frame = cv2.imread(path)
 
-        midi = str(raw_input("Midi notes (space separated integers [0, 127]): "))
-        zeros = [0] * 128
+        if not frame == None:
+            frame = misc.imresize(frame, [299, 299])
+            cv2.imshow('frame', frame)
+            key = cv2.waitKey()
 
-        if midi == "q":
-            break
+            if key & 0xFF == ord('q'):
+                break
 
-        midi_notes = midi.split(' ')
-        # convert midi notes to binary array
+            else:
 
-        for note in midi_notes:
-            zeros[int(note)] = 1
+                print held_notes
+                label = to_binary_array_label(held_notes, 8)
 
-        # add resulting binary array to labeled files
-        label_file(path, zeros)
+                # add resulting binary array to labeled files
+                label_file(path, label)
+                file_array.pop(index)
 
-        # remove from unlabeled list and unlabeled json file
-        file_array.pop(index)
+        else:
+            file_array.pop(index)
+            continue
 
-        # kill image window
-        os.system("killall -9 eog")
-
-    print "Exitting labeling program"
-    os.system("killall -9 eog")
+    print "Exiting labeling program"
     sys.exit(0)
 
 def remove_from_unlabeled_file(index):
@@ -132,7 +132,6 @@ def midi_callback(midi_tuple, data):
         else:
             held_notes.append(note)
             osc_handler.sendMessage('/noteon', note)
-    print midi_data
 
 def label_video(video_path):
     global osc_handler
@@ -160,7 +159,6 @@ def label_video(video_path):
             if key & 0xFF == ord('q'):
                 break
             else:
-                print held_notes
 
                 augmented_images = image_augmentation.augment_image(frame)
                 videoname = video_path.split("/")[-1].split(".")[0]
@@ -203,6 +201,7 @@ def label_file(path, label):
 
     # read image
     image = misc.imread(path)
+    image = misc.imresize(image, [299, 299])
 
     # apply image augmentation
     augmented_images = image_augmentation.augment_image(image)
@@ -234,8 +233,8 @@ def label_file(path, label):
 if __name__ == "__main__":
     if (len(sys.argv) > 1):
         labeled += sys.argv[1]
-        #label_unlabeled(sys.argv[2])
-        label_video(sys.argv[2])
+        label_unlabeled(sys.argv[2])
+        #label_video(sys.argv[2])
 
     else:
         initialize_labels()

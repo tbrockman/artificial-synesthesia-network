@@ -49,10 +49,17 @@ def send_midi_on_osc(osc, midi, performance=True):
     #if not np.array_equal(last_prediction, midi):
     #    last_prediction = midi
     if performance:
+        send_off = [1] * 8
         for track in midi:
             # TODO: send osc on for present tracks
             # send osc off for not present tracks
-            print track
+            osc.sendMessage('/noteon', track)
+            send_off[track] = 0
+
+        for i in range(len(send_off)):
+            if send_off[i]:
+                osc.sendMessage('/noteoff', i)
+
     else:
         osc.sendMessage('/cnn_midi', midi.tolist())
 
@@ -133,6 +140,7 @@ if __name__ == '__main__':
     model_path = sys.argv[1]
 
     model, osc = load_model_and_osc(model_path, ('127.0.0.1', 57120))
+    print osc
 
     if len(sys.argv) > 2:
         path = sys.argv[2]
